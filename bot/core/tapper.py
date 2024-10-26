@@ -59,6 +59,7 @@ class Tapper:
         self.updated_pixels = {}
         self.socket = None
         self.socket_task = None
+        self.last_balance = 0
 
         self.session_ug_dict = self.load_user_agents() or []
 
@@ -411,8 +412,23 @@ class Tapper:
         draw_request.raise_for_status()
 
         data = await draw_request.json()
-
-        self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> 🔳")
+        balance = data.get('balance', 'unknown')
+        difference_pix = 0
+        try:
+            if isinstance(balance, str):
+                balance = float(balance.replace(',', ''))  
+            elif isinstance(balance, (int, float)):
+                balance = float(balance) 
+            difference_pix = balance - self.last_balance
+            
+            formatted_balance = '{:,.3f}'.format(balance)
+            formatted_difference_pix = '{:,.3f}'.format(difference_pix)
+            
+            self.last_balance = balance
+            
+        except ValueError:
+            self.error(f"ValueError, error convert difference_pix to float.")
+        self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
 
     async def draw_x3(self, http_client: aiohttp.ClientSession):
         try:
@@ -475,7 +491,9 @@ class Tapper:
             response = await http_client.get('https://notpx.app/api/v1/mining/status', ssl=settings.ENABLE_SSL)
             response.raise_for_status()
             data = await response.json()
-            charges = data['charges']
+            charges = data['charges'] 
+            balance_str = data.get('userBalance', 'unknown')
+            self.last_balance = float(balance_str)
 
             if charges > 0:
                 self.info(f"Energy: <cyan>{charges}</cyan> ⚡️")
