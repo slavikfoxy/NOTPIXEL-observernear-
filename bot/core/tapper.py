@@ -420,7 +420,6 @@ class Tapper:
             elif isinstance(balance, (int, float)):
                 balance = float(balance) 
             difference_pix = balance - self.last_balance
-            
             self.last_balance = balance
             
         except ValueError:
