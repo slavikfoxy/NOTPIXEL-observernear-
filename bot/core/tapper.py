@@ -60,6 +60,7 @@ class Tapper:
         self.socket = None
         self.socket_task = None
         self.last_balance = 0
+        self.filename = 'Balaces.txt'
 
         self.session_ug_dict = self.load_user_agents() or []
 
@@ -92,6 +93,29 @@ class Tapper:
     def success(self, message):
         from bot.utils import success
         success(f"<light-yellow>{self.session_name}</light-yellow> | ✅ {message}")
+
+    async def save_or_update_session(self, balance):
+        sessions = {}
+        if os.path.exists(self.filename):
+            with open(self.filename, 'r') as file:
+                for line in file:
+                    name, bal = line.strip().split(',')
+                    sessions[name] = float(bal)
+
+        sessions[self.session_name] = balance
+
+        with open(self.filename, 'w') as file:
+            for name, bal in sessions.items():
+                file.write(f"{name},{bal}\n")
+
+    async def get_total_balance(self):
+        total_balance = 0
+        if os.path.exists(self.filename):
+            with open(self.filename, 'r') as file:
+                for line in file:
+                    _, bal = line.strip().split(',')
+                    total_balance += float(bal)
+        return total_balance
 
     def save_user_agent(self):
         user_agents_file_name = "user_agents.json"
@@ -420,6 +444,7 @@ class Tapper:
             elif isinstance(balance, (int, float)):
                 balance = float(balance) 
             difference_pix = balance - self.last_balance
+        
             self.last_balance = balance
             
         except ValueError:
@@ -555,7 +580,7 @@ class Tapper:
                 
                     # Зменшуємо кількість доступної енергії
                     charges -= 1
-
+            await self.save_or_update_session(balance_str)
         except Exception as e:
             self.error(f"Websocket error during painting (x8): {e}")
         except Exception as error:
@@ -900,6 +925,7 @@ class Tapper:
                         self.info(f"Current balance: Unknown 🔳")
                     else:
                         self.info(f"Balance: <light-green>{'{:,.3f}'.format(current_balance)}</light-green> 🔳 | Repaints: <magenta>{repaints}</magenta> 🎨️ | League: <cyan>{league.capitalize()}</cyan> 🏆")
+                        await self.save_or_update_session(current_balance)
 
                     if settings.ENABLE_AUTO_JOIN_TO_SQUAD:
                         await self.join_squad(http_client=http_client, user=user)
@@ -922,6 +948,9 @@ class Tapper:
 
                     if settings.ENABLE_AUTO_TASKS:
                         await self.run_tasks(http_client=http_client)
+
+                all_balance = await self.get_total_balance()
+                self.info(f"Баланс всех аккаунтов: <red>{'{:,.3f}'.format(all_balance)}</red>")
 
                 sleep_time = random.randint(settings.SLEEP_TIME_IN_MINUTES[0], settings.SLEEP_TIME_IN_MINUTES[1])
 
