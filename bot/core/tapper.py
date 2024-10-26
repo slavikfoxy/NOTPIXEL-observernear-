@@ -421,9 +421,6 @@ class Tapper:
                 balance = float(balance) 
             difference_pix = balance - self.last_balance
             
-            formatted_balance = '{:,.3f}'.format(balance)
-            formatted_difference_pix = '{:,.3f}'.format(difference_pix)
-            
             self.last_balance = balance
             
         except ValueError:
