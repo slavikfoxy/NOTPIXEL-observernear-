@@ -2,7 +2,7 @@
 
 if not exist venv (
     echo Creating virtual environment...
-    py -3.11 -m venv venv
+    python -m venv venv
 )
 
 
@@ -25,8 +25,7 @@ if not exist venv\Lib\site-packages\installed (
 )
 
 echo Starting the bot...
-python main.py 
-
+python main.py
 
 echo done
 pause
