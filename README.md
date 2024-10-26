@@ -1,5 +1,5 @@
 # 🎨 АВТО ФАРМ ДЛЯ NOTPIXEL 3.1.1 🎨
-## [by github]([https://www.youtube.com/@rmsudo](https://github.com/observernear/YouTube/tree/NotPixel3.0)
+## [github](https://github.com/observernear/YouTube/tree/NotPixel3.0)
 ## [YouTube](https://www.youtube.com/@rmsudo)
 ## [NotPixel bot](https://t.me/notpixel/app?startapp=f5064842218_t_s4)
 
