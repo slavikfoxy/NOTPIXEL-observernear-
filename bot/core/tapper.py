@@ -875,9 +875,7 @@ class Tapper:
         login_need = True
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
-
         http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
-
         if proxy:
             await self.check_proxy(http_client=http_client, proxy=proxy)
 
