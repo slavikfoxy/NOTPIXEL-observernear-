@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     DOWNLOAD_METHOD_2: bool = True
     DOWNLOAD_FROM_FILE: bool = False
     LOCAL_LINK_TO_FILE: str = 'fox.jpg' 
-
+    USE_REF: bool = True
+    REF_ID: str = 'f511615987_t'
+    INFO: bool = True
+    
 # настройки ниже лучше не трогать
 
     USE_RANDOM_DELAY_IN_RUN: bool = True
@@ -35,8 +38,7 @@ class Settings(BaseSettings):
     ENABLE_AUTO_JOIN_TO_SQUAD_CHANNEL: bool = True
     ENABLE_AUTO_JOIN_TO_SQUAD: bool = True
     SQUAD_SLUG: str = 'lisyfox'
-    USE_REF: bool = True
-    REF_ID: str = 'f511615987_t'
+
 
     IN_USE_SESSIONS_PATH: str = 'bot/config/used_sessions.txt'
 
