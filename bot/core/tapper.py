@@ -477,6 +477,30 @@ class Tapper:
             if not original_image:
                 return None
 
+            while charges > 0:
+                await asyncio.sleep(delay=random.randint(2, 8))
+                # Завантажуємо поточне зображення без image_headers (якщо не потрібно)
+                current_image_url = 'https://image.notpx.app/api/v2/image'
+                image_headers = deepcopy(headers)
+                image_headers['Host'] = 'app.notpx.app'
+
+                current_image = await self.get_image(http_client, current_image_url, image_headers=image_headers)  # Аргумент image_headers не потрібен
+                if not current_image:
+                    return None
+
+                original_pixel = original_image.getpixel((updated_x - x_offset, updated_y - y_offset))
+                original_pixel_color = '#{:02x}{:02x}{:02x}'.format(*original_pixel).upper()
+
+                current_pixel = current_image.getpixel((updated_x, updated_y))
+                current_pixel_color = '#{:02x}{:02x}{:02x}'.format(*current_pixel).upper()
+
+                # Перевіряємо різницю між оригінальним пікселем і поточним
+                if current_pixel_color != original_pixel_color:
+                    await self.send_draw_request(
+                        http_client=http_client,
+                        update=(updated_x, updated_y, original_pixel_color)
+                        )
+                charges -= 1
         except Exception as e:
             self.error(f"Websocket error during painting (x3): {e}")
         except Exception as error:
