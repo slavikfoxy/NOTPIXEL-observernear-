@@ -97,26 +97,26 @@ class Tapper:
     async def save_or_update_session(self, balance):
         sessions = {}
         if os.path.exists(self.filename):
-            with open(self.filename, 'r') as file:
+            with open(self.filename, 'r', encoding='utf-8') as file:
                 for line in file:
                     name, bal = line.strip().split(',')
                     sessions[name] = float(bal)
-
+    
         sessions[self.session_name] = balance
-
-        with open(self.filename, 'w') as file:
+    
+        with open(self.filename, 'w', encoding='utf-8') as file:
             for name, bal in sessions.items():
                 file.write(f"{name},{bal}\n")
-
+    
     async def get_total_balance(self):
         total_balance = 0
         if os.path.exists(self.filename):
-            with open(self.filename, 'r') as file:
+            with open(self.filename, 'r', encoding='utf-8') as file:
                 for line in file:
                     _, bal = line.strip().split(',')
                     total_balance += float(bal)
         return total_balance
-
+    
     def save_user_agent(self):
         user_agents_file_name = "user_agents.json"
 
