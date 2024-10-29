@@ -60,7 +60,7 @@ class Tapper:
         self.socket = None
         self.socket_task = None
         self.last_balance = 0
-        self.filename = 'Balaces.txt'
+        self.filename = 'Balances.txt'
 
         self.session_ug_dict = self.load_user_agents() or []
 
@@ -116,7 +116,7 @@ class Tapper:
                     _, bal = line.strip().split(',')
                     total_balance += float(bal)
         return total_balance
-    
+
     def save_user_agent(self):
         user_agents_file_name = "user_agents.json"
 
@@ -383,7 +383,7 @@ class Tapper:
 
                     # Перевіряємо, чи це зображення
                     if 'image' not in content_type:
-                        raise Exception(f"URL не містить зображення. MIME-тип: {content_type}")
+                        raise Exception(f"URL не содержит изображения. MIME-тип: {content_type}")
 
                     # Читаємо дані зображення
                     img_data = await response.read()
@@ -454,61 +454,6 @@ class Tapper:
             self.error(f"ValueError, error convert difference_pix to float.")
         self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
 
-    async def draw_x3(self, http_client: aiohttp.ClientSession):
-        try:
-            # Отримуємо статус майнінгу
-            response = await http_client.get('https://notpx.app/api/v1/mining/status', ssl=settings.ENABLE_SSL)
-            response.raise_for_status()
-            data = await response.json()
-            charges = data['charges']
-
-            if charges > 0:
-                self.info(f"Energy: <cyan>{charges}</cyan> ⚡️")
-            else:
-                self.info(f"No energy ⚡️")
-                return None
-
-            original_image_url = 'https://app.notpx.app/assets/durovoriginal-CqJYkgok.png'
-            x_offset, y_offset = 244, 244  # Координати початку шаблону
-            image_headers = deepcopy(headers)
-            image_headers['Host'] = 'app.notpx.app'
-            # Передаємо image_headers для оригінального зображення
-            original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
-            if not original_image:
-                return None
-
-            while charges > 0:
-                await asyncio.sleep(delay=random.randint(2, 8))
-                # Завантажуємо поточне зображення без image_headers (якщо не потрібно)
-                current_image_url = 'https://image.notpx.app/api/v2/image'
-                image_headers = deepcopy(headers)
-                image_headers['Host'] = 'app.notpx.app'
-
-                current_image = await self.get_image(http_client, current_image_url, image_headers=image_headers)  # Аргумент image_headers не потрібен
-                if not current_image:
-                    return None
-
-                original_pixel = original_image.getpixel((updated_x - x_offset, updated_y - y_offset))
-                original_pixel_color = '#{:02x}{:02x}{:02x}'.format(*original_pixel).upper()
-
-                current_pixel = current_image.getpixel((updated_x, updated_y))
-                current_pixel_color = '#{:02x}{:02x}{:02x}'.format(*current_pixel).upper()
-
-                # Перевіряємо різницю між оригінальним пікселем і поточним
-                if current_pixel_color != original_pixel_color:
-                    await self.send_draw_request(
-                        http_client=http_client,
-                        update=(updated_x, updated_y, original_pixel_color)
-                        )
-                charges -= 1
-        except Exception as e:
-            self.error(f"Websocket error during painting (x3): {e}")
-        except Exception as error:
-            self.warning(f"Unknown error during painting (x3): <light-yellow>{error}</light-yellow>")
-            self.info(f"Start drawing without x3...")
-            await asyncio.sleep(delay=3)
-            await self.draw(http_client=http_client)
-
     async def draw(self, http_client: aiohttp.ClientSession):
         try:
             # Отримуємо статус майнінгу
@@ -529,39 +474,49 @@ class Tapper:
             if settings.INFO:
                 self.info(f"link - {settings.IMAGE_LINK}")
                 self.info(f"REF_ID({settings.USE_REF}) - {settings.REF_ID}, x:{settings.X_OFFSET} y:{settings.Y_OFFSET}")
-                self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")         
+                self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")
             # Download Image
-            if settings.DOWNLOAD_METHOD_2 and not settings.DOWNLOAD_FROM_FILE:
-                self.info(f"Способ загрузки шаблона - urllib.request")
-
+            method_download_flag = False
+            try:
+                self.info(f"Способ загрузки шаблона 1 - urllib.request")
                 with urllib.request.urlopen(settings.IMAGE_LINK) as response:
                     img_data = response.read()
                     img = Image.open(io.BytesIO(img_data))
                 original_image = img
+                method_download_flag = True
                 if not original_image:
                     return None
-
-            elif settings.DOWNLOAD_FROM_FILE:
-                self.info(f"Способ загрузки шаблона - локальный файл - os.path.join")
-                save_path = os.path.join(settings.LOCAL_LINK_TO_FILE)
-                with open(save_path, 'rb') as f:
-                    img_data = f.read()
-                    img = Image.open(io.BytesIO(img_data))
-                original_image = img
-                if not original_image:
-                    return None
-                
-            else:
-                self.info(f"Способ загрузки шаблона - стандартный - get_image")
-                original_image_url = settings.IMAGE_LINK
-                pattern = r'://([^/]+)/'
-                match = re.search(pattern, original_image_url)
-                image_headers = deepcopy(headers)
-                image_headers['Host'] = match.group(1)
-                original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
-                if not original_image:
-                    return None
-
+            
+            except urllib.error.HTTPError as e:
+                self.info(f"Ошибка {e.code} - {e.reason}.")
+            
+            if not method_download_flag:
+                try:
+                    self.info(f"Способ загрузки шаблона 2 - get_image")
+                    original_image_url = settings.IMAGE_LINK
+                    pattern = r'://([^/]+)/'
+                    match = re.search(pattern, original_image_url)
+                    image_headers = deepcopy(headers)
+                    image_headers['Host'] = match.group(1)
+                    original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
+                    if original_image:
+                        method_download_flag = True
+                except Exception as e:
+                    self.info(f"Ошибка при загрузке изображения - {e}")
+            
+            if not method_download_flag:
+                try:
+                    self.info(f"Способ загрузки шаблона 3 - локальный файл - os.path.join")
+                    save_path = os.path.join(settings.LOCAL_LINK_TO_FILE)
+                    with open(save_path, 'rb') as f:
+                        img_data = f.read()
+                        img = Image.open(io.BytesIO(img_data))
+                    original_image = img
+                    if not original_image:
+                        return None
+                except Exception as e:
+                    self.info(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
+            
             while charges > 0:
                 await asyncio.sleep(delay=random.randint(4, 8))
 
@@ -875,7 +830,9 @@ class Tapper:
         login_need = True
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
+
         http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
+
         if proxy:
             await self.check_proxy(http_client=http_client, proxy=proxy)
 
@@ -936,10 +893,7 @@ class Tapper:
                         await self.join_squad(http_client=http_client, user=user)
 
                     if settings.ENABLE_AUTO_DRAW:
-                        if settings.ENABLE_EXPERIMENTAL_X3_MODE and self.socket:
-                            await self.draw_x3(http_client=http_client)
-                        else:
-                            await self.draw(http_client=http_client)
+                        await self.draw(http_client=http_client)
 
                     if settings.ENABLE_AUTO_UPGRADE:
                         status = await self.upgrade(http_client=http_client)
