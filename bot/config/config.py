@@ -21,8 +21,6 @@ class Settings(BaseSettings):
     IMAGE_LINK: str = 'https://fra1.digitaloceanspaces.com/notpix-user-content/templates/511615987.png'
     X_OFFSET: int = 706 
     Y_OFFSET: int = 302
-    DOWNLOAD_METHOD_2: bool = True
-    DOWNLOAD_FROM_FILE: bool = False
     LOCAL_LINK_TO_FILE: str = 'fox.jpg' 
     USE_REF: bool = True
     REF_ID: str = 'f511615987_t'
