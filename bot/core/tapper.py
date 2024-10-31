@@ -9,6 +9,8 @@ from PIL import Image
 import io
 import os
 import math
+import sys
+import traceback
 
 from json import dump as dp, loads as ld
 from aiocfscrape import CloudflareScraper
@@ -445,14 +447,59 @@ class Tapper:
                 balance = float(balance) 
             difference_pix = balance - self.last_balance
             
-            formatted_balance = '{:,.3f}'.format(balance)
-            formatted_difference_pix = '{:,.3f}'.format(difference_pix)
-            
             self.last_balance = balance
             
         except ValueError:
             self.error(f"ValueError, error convert difference_pix to float.")
         self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
+    """
+    async def pumking_frirs_start(self, http_client: aiohttp.ClientSession):
+        payload = {"pumpkin": "true"}
+        try:
+            request1 = await http_client.post(
+                'https://notpx.app/api/v1/mining/task/check/pumpkin',
+                json=payload,
+                ssl=settings.ENABLE_SSL
+            )
+            
+            request1.raise_for_status()
+    
+            data1 = await request1.json()
+            await asyncio.sleep(delay=1)
+            self.success(f"request1 - {data1} ")
+        except Exception as e:
+            self.error(f"Ошибка получения pumpkin. {e}")
+    """
+
+    async def send_pumking(self, http_client: aiohttp.ClientSession, update):
+        x, y = update
+        pixelId = int(f'{y}{x}')+1
+        payload = {
+            "pixelId": pixelId,
+            "type": 7
+        }
+
+        draw_request = await http_client.post(
+            'https://notpx.app/api/v1/repaint/special',
+            json=payload,
+            ssl=settings.ENABLE_SSL
+        )
+
+        draw_request.raise_for_status()
+        await asyncio.sleep(delay=1)
+        balance = await self.get_balance(http_client=http_client)
+        difference_pix = 0
+        try:
+            if isinstance(balance, str):
+                balance = float(balance.replace(',', ''))  
+            elif isinstance(balance, (int, float)):
+                balance = float(balance) 
+            difference_pix = balance - self.last_balance
+            
+            self.last_balance = balance
+        except ValueError:
+            self.error(f"ValueError, error convert difference_pix to float.")
+        self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with PUMKING 🎨️ | Balance <light-green>{balance:,.3f}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
 
     async def draw(self, http_client: aiohttp.ClientSession):
         try:
@@ -463,7 +510,29 @@ class Tapper:
             charges = data['charges'] 
             balance_str = data.get('userBalance', 'unknown')
             self.last_balance = float(balance_str)
+            #if not data.get('tasks', {}).get('pumpkin'):
+                #await self.pumking_frirs_start(http_client=http_client)
+            #self.info(f"data good : <cyan>{data['goods']}</cyan> ⚡️")
+            #PUMKING
+            if '7' in data.get('goods', {}):
+                pumking = data['goods']['7']
+                if charges > 0:
+                    self.info(f"Pumking: <cyan>{pumking}</cyan> ⚡️")
+                else:
+                    self.info(f"No energy ⚡️")
+                    return None
+                    
+                while pumking > 0:
+                    updated_x = random.randint(10, 990)
+                    updated_y = random.randint(10, 990)
+                    await self.send_pumking(
+                        http_client=http_client,
+                        update=(updated_x, updated_y)
+                    )
+                
+                    pumking -= 1
 
+            #///PUMKING
             if charges > 0:
                 self.info(f"Energy: <cyan>{charges}</cyan> ⚡️")
             else:
@@ -474,11 +543,11 @@ class Tapper:
             if settings.INFO:
                 self.info(f"link - {settings.IMAGE_LINK}")
                 self.info(f"REF_ID({settings.USE_REF}) - {settings.REF_ID}, x:{settings.X_OFFSET} y:{settings.Y_OFFSET}")
-                self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")
+                #self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")
             # Download Image
             method_download_flag = False
             try:
-                self.info(f"Способ загрузки шаблона 1 - urllib.request")
+                #self.info(f"Способ загрузки шаблона 1 - urllib.request")
                 with urllib.request.urlopen(settings.IMAGE_LINK) as response:
                     img_data = response.read()
                     img = Image.open(io.BytesIO(img_data))
@@ -488,11 +557,11 @@ class Tapper:
                     return None
             
             except urllib.error.HTTPError as e:
-                self.info(f"Ошибка {e.code} - {e.reason}.")
+                self.error(f"Ошибка {e.code} - {e.reason}.")
             
             if not method_download_flag:
                 try:
-                    self.info(f"Способ загрузки шаблона 2 - get_image")
+                    #self.info(f"Способ загрузки шаблона 2 - get_image")
                     original_image_url = settings.IMAGE_LINK
                     pattern = r'://([^/]+)/'
                     match = re.search(pattern, original_image_url)
@@ -502,7 +571,7 @@ class Tapper:
                     if original_image:
                         method_download_flag = True
                 except Exception as e:
-                    self.info(f"Ошибка при загрузке изображения - {e}")
+                    self.error(f"Ошибка при загрузке изображения - {e}")
             
             if not method_download_flag:
                 try:
@@ -515,8 +584,9 @@ class Tapper:
                     if not original_image:
                         return None
                 except Exception as e:
-                    self.info(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
-            
+                    self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
+
+
             while charges > 0:
                 await asyncio.sleep(delay=random.randint(4, 8))
 
@@ -544,10 +614,11 @@ class Tapper:
                     charges -= 1
             await self.save_or_update_session(balance_str)
         except Exception as e:
-            self.error(f"Websocket error during painting (x8): {e}")
+            error_message = f"Websocket error during painting: {str(e)}"
+            detailed_error = traceback.format_exc()  # Отримуємо повний текст помилки з трасуванням
+            self.error(f"{error_message}\nDetailed error:\n{detailed_error}")
         except Exception as error:
-            self.warning(f"Unknown error during painting (x8): <light-yellow>{error}</light-yellow>")
-            self.info(f"Start drawing without x8...")
+            self.warning(f"Unknown error during painting: <light-yellow>{error}</light-yellow>")
             await asyncio.sleep(delay=3)
             await self.draw(http_client=http_client)
             
@@ -892,6 +963,9 @@ class Tapper:
                     if settings.ENABLE_AUTO_JOIN_TO_SQUAD:
                         await self.join_squad(http_client=http_client, user=user)
 
+                    if settings.ENABLE_AUTO_TASKS:
+                        await self.run_tasks(http_client=http_client)
+
                     if settings.ENABLE_AUTO_DRAW:
                         await self.draw(http_client=http_client)
 
@@ -904,9 +978,6 @@ class Tapper:
                         reward = await self.claim_mine(http_client=http_client)
                         if reward is not None:
                             self.info(f"Claim reward: <light-green>{'{:,.3f}'.format(reward)}</light-green> 🔳")
-
-                    if settings.ENABLE_AUTO_TASKS:
-                        await self.run_tasks(http_client=http_client)
 
                 all_balance = await self.get_total_balance()
                 self.info(f"Баланс всех аккаунтов: <red>{'{:,.3f}'.format(all_balance)}</red>")
@@ -937,6 +1008,7 @@ class Tapper:
 
             except Exception as error:
                 self.error(f"Unknown error: <light-yellow>{error}</light-yellow>")
+        
 
 async def run_tapper(tg_client: Client, proxy: str | None):
     try:
