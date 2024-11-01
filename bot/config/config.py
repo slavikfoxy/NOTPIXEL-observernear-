@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     DISABLE_IN_NIGHT: bool = True
     NIGHT_TIME: list[int] = [23, 5]
-
+    """
     DRAW_RANDOM_X_DIAPOSON: list[int] = [456, 567]
     DRAW_RANDOM_Y_DIAPOSON: list[int] = [120, 231]
     DRAW_RANDOM_COLORS: list[str] = ["#000000"]
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
             'y': { 'type': 'random', 'value': [995, 999] }
         }
     ]
-
+    """
     ENABLE_SSL: bool = False
 
     BOOSTS_BLACK_LIST: list[str] = ['invite3frens', 'INVITE_FRIENDS', 'TON_TRANSACTION', 'BOOST_CHANNEL', 'ACTIVITY_CHALLENGE', 'CONNECT_WALLET']
