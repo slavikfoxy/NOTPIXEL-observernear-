@@ -1028,8 +1028,12 @@ class Tapper:
         
                         await asyncio.sleep(delay=sleep_time*60)
                     else:
-                        self.info(f"Waiting 20 seconds before retrying...")
-                        await asyncio.sleep(delay=20)
+                        if hasattr(settings, 'FLOOD_WAIT_420_TIME'):
+                            self.info(f"Waiting {settings.FLOOD_WAIT_420_TIME} seconds before retrying...")
+                            await asyncio.sleep(delay=settings.FLOOD_WAIT_420_TIME)
+                        else:
+                            self.info(f"Waiting 20 seconds before retrying...")
+                            await asyncio.sleep(delay=20)
                         continue
         
                 except Exception as error:

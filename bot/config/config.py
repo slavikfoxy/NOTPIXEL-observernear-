@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     SLEEP_TIME_IN_MINUTES: list[int] = [30, 60]
 
+    #Время за которое код перезапустится после ошибки 420_FLOOD_WAIT
+    FLOOD_WAIT_420_TIME: int = 30
+
     ENABLE_AUTO_JOIN_TO_SQUAD_CHANNEL: bool = True
     ENABLE_AUTO_JOIN_TO_SQUAD: bool = True
     SQUAD_SLUG: str = 'lisyfox'
