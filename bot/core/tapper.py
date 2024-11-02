@@ -577,15 +577,17 @@ class Tapper:
                         image_name = os.path.basename(settings.IMAGE_LINK)
                         original_image.save(os.path.join(image_name))
                     except Exception as error:
-                        print(f"Error during image download and save: {error}")
+                        if settings.INFO:
+                            print(f"Error during image download and save: {error}")
                     if original_image:
                         method_download_flag = True
                 except Exception as e:
-                    self.error(f"Ошибка при загрузке изображения - {e}")
+                    if settings.INFO:
+                        self.error(f"Ошибка при загрузке изображения - {e}")
             
             if not method_download_flag:
                 try:
-                    self.info(f"Способ загрузки шаблона 3 - локальный файл - os.path.join")
+                    self.info(f"Способ загрузки шаблона 3 - локальный файл")
                     save_path = os.path.join(settings.LOCAL_LINK_TO_FILE)
                     with open(save_path, 'rb') as f:
                         img_data = f.read()
@@ -594,7 +596,8 @@ class Tapper:
                     if not original_image:
                         return None
                 except Exception as e:
-                    self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
+                    if settings.INFO:
+                        self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
 
 
             while charges > 0:
@@ -719,27 +722,29 @@ class Tapper:
             data = await res.json()
 
             tasks = data['tasks'].keys()
-
-            # 'nikolai', fetch-запит
-            if 'nikolai' in tasks:
-                async with http_client.post(
-                    'https://plausible.joincommunity.xyz/api/event',
-                    headers={
-                        "accept": "*/*",
-                        "content-type": "text/plain",
-                    },
-                    json={
-                        "n": "task_nikolai",
-                        "u": "https://app.notpx.app/claiming",
-                        "d": "notpx.app",
-                        "r": None,
-                        "p": {"country": "PL"}
-                    },
-                    ssl=settings.ENABLE_SSL
-                ) as response:
-                    response.raise_for_status()
-                    self.success("Executed task_nikolai event successfully.")
-
+            try:
+                # 'nikolai', fetch-запит
+                if 'nikolai' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_nikolai",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": None,
+                            "p": {"country": "PL"}
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_nikolai event successfully.")
+            except Exception as error:
+                if settings.INFO:
+                    self.error(f"Unknown error during processing tasks nikolai: <light-yellow>{error}</light-yellow>")
 
             for task in settings.TASKS_TODO_LIST:
                 if self.user != None and task == 'premium' and not 'isPremium' in self.user:
@@ -1045,4 +1050,3 @@ async def run_tapper(tg_client: Client, proxy: str | None):
         await Tapper(tg_client=tg_client).run(proxy=proxy)
     except InvalidSession:
         self.error(f"{tg_client.name} | Invalid Session")
-
