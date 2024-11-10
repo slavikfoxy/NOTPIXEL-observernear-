@@ -63,6 +63,16 @@ class Tapper:
         self.socket_task = None
         self.last_balance = 0
         self.filename = 'Balances.txt'
+        self.IMAGE_LINK = settings.IMAGE_LINK
+        self.REF_ID = settings.REF_ID
+        self.x_offset = settings.X_OFFSET
+        self.y_offset = settings.Y_OFFSET
+        self.extra = 0
+        self.missPx = 0
+        self.nextline = False
+        self.time_reset = False
+        self.current_line = 0
+        self.error_draw = False
 
         self.session_ug_dict = self.load_user_agents() or []
 
@@ -101,11 +111,17 @@ class Tapper:
         if os.path.exists(self.filename):
             with open(self.filename, 'r', encoding='utf-8') as file:
                 for line in file:
-                    name, bal = line.strip().split(',')
-                    sessions[name] = float(bal)
-    
+                    # Skip empty or malformed lines
+                    if ',' not in line:
+                        continue
+                    try:
+                        name, bal = line.strip().split(',')
+                        sessions[name] = float(bal)
+                    except ValueError:
+                        print(f"Skipping malformed line: {line.strip()}")
+        
         sessions[self.session_name] = balance
-    
+        
         with open(self.filename, 'w', encoding='utf-8') as file:
             for name, bal in sessions.items():
                 file.write(f"{name},{bal}\n")
@@ -188,7 +204,12 @@ class Tapper:
                 except (Unauthorized, UserDeactivated, AuthKeyUnregistered):
                     raise InvalidSession(self.session_name)
 
-            self.start_param = settings.REF_ID
+            if 'https://' in self.REF_ID:
+                match = re.search(r'startapp=([\w_]+)', self.REF_ID)
+                if match:
+                    self.start_param = match.group(1)
+            else:
+                self.start_param = self.REF_ID
 
             peer = await self.tg_client.resolve_peer('notpixel')
             InputBotApp = types.InputBotAppShortName(bot_id=peer, short_name="app")
@@ -451,25 +472,64 @@ class Tapper:
             
         except ValueError:
             self.error(f"ValueError, error convert difference_pix to float.")
+        if difference_pix == 0:
+            self.missPx +=1
+            await self.read_and_update_line('templates.txt', self.current_line, True)
+        else:
+            self.missPx = 0
         self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
-    """
-    async def pumking_frirs_start(self, http_client: aiohttp.ClientSession):
-        payload = {"pumpkin": "true"}
+
+    async def read_and_update_line(self, filename, line_number= None, new_extra_value=None, bestline=None):
         try:
-            request1 = await http_client.post(
-                'https://notpx.app/api/v1/mining/task/check/pumpkin',
-                json=payload,
-                ssl=settings.ENABLE_SSL
-            )
-            
-            request1.raise_for_status()
-    
-            data1 = await request1.json()
-            await asyncio.sleep(delay=1)
-            self.success(f"request1 - {data1} ")
+            if os.path.exists('templates.txt'):
+                with open(filename, 'r') as file:
+                    lines = file.readlines()
+                if bestline == True:
+                    intline = 0
+                    min_value = None
+                    returnnumline = 0
+                    for line in lines:
+                        parts = line.strip().split(", ")
+                        if len(parts) == 5:
+                            try:
+                                extra_value = int(parts[-1])
+                                if min_value is None:   
+                                    min_value = extra_value
+                                    returnnumline = intline
+                                if extra_value < min_value:
+                                    min_value = extra_value
+                                    returnnumline = intline
+                            except ValueError:
+                                self.error("Error find bestline")
+                        intline +=1
+                    return returnnumline
+                if line_number != None and bestline == None:
+                    
+                    if 0 <= line_number < len(lines):
+                        line = lines[line_number].strip()
+                        parts = line.split(", ")
+
+                        if new_extra_value is not None and len(parts) == 5:
+                            parts[-1] = str(int(parts[-1]) + 1)
+                            lines[line_number] = ", ".join(parts) + "\n"  
+
+                            with open(filename, 'w') as file:
+                                file.writelines(lines)
+
+                        if new_extra_value == None and line_number != None and bestline == None:
+                            if len(parts) == 5:
+                                    self.IMAGE_LINK, self.REF_ID, self.x_offset, self.y_offset, self.extra = parts
+                                    self.x_offset = int(self.x_offset)
+                                    self.y_offset = int(self.y_offset)
+                                    self.extra = int(self.extra)
+
+                    else:
+                        self.error("(read_and_update_line) Line number out of range.")
+            return len(lines)
         except Exception as e:
-            self.error(f"Ошибка получения pumpkin. {e}")
-    """
+            self.error(f"read_and_update_line error {traceback.format_exc()}")
+            return None
+        
 
     async def send_pumking(self, http_client: aiohttp.ClientSession, update):
         x, y = update
@@ -503,7 +563,7 @@ class Tapper:
 
     async def draw(self, http_client: aiohttp.ClientSession):
         try:
-            # Отримуємо статус майнінгу
+            self.error_draw = True
             response = await http_client.get('https://notpx.app/api/v1/mining/status', ssl=settings.ENABLE_SSL)
             response.raise_for_status()
             data = await response.json()
@@ -538,24 +598,25 @@ class Tapper:
             else:
                 self.info(f"No energy ⚡️")
                 return None
-
-            x_offset, y_offset = settings.X_OFFSET, settings.Y_OFFSET  # Координат шаблону
+            
             if settings.INFO:
-                self.info(f"link - {settings.IMAGE_LINK}")
-                self.info(f"REF_ID({settings.USE_REF}) - {settings.REF_ID}, x:{settings.X_OFFSET} y:{settings.Y_OFFSET}")
+                self.info(f"link - {self.IMAGE_LINK}")
+                self.info(f"REF_ID({settings.USE_REF}) - {self.REF_ID}, x:{self.x_offset} y:{self.y_offset}")
                 #self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")
             # Download Image
             method_download_flag = False
             try:
                 #self.info(f"Способ загрузки шаблона 1 - urllib.request")
-                with urllib.request.urlopen(settings.IMAGE_LINK) as response:
+                with urllib.request.urlopen(self.IMAGE_LINK) as response:
                     img_data = response.read()
                     img = Image.open(io.BytesIO(img_data))
                     try:
-                        image_name = os.path.basename(settings.IMAGE_LINK)
-                        img.save(os.path.join(image_name))
+                        if not os.path.exists("images"):
+                            os.makedirs("images")
+                        image_name = os.path.basename(self.IMAGE_LINK)
+                        img.save(os.path.join("images", image_name))
                     except Exception as error:
-                        print(f"Error during image download and save: {error}")
+                        self.error(f"Error during image download and save: {error}")
                 original_image = img
                 method_download_flag = True
                 if not original_image:
@@ -567,28 +628,32 @@ class Tapper:
             if not method_download_flag:
                 try:
                     #self.info(f"Способ загрузки шаблона 2 - get_image")
-                    original_image_url = settings.IMAGE_LINK
+                    original_image_url = self.IMAGE_LINK
                     pattern = r'://([^/]+)/'
                     match = re.search(pattern, original_image_url)
                     image_headers = deepcopy(headers)
                     image_headers['Host'] = match.group(1)
                     original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
                     try:
-                        image_name = os.path.basename(settings.IMAGE_LINK)
-                        original_image.save(os.path.join(image_name))
+                        if original_image:
+                            image_name = os.path.basename(self.IMAGE_LINK)
+                            if not os.path.exists("images"):
+                                os.makedirs("images")
+                            save_path = os.path.join("images", image_name)
+                            original_image.save(save_path)
                     except Exception as error:
-                        if settings.INFO:
-                            print(f"Error during image download and save: {error}")
+                        self.error(f"Error during image download and save: {error}")
                     if original_image:
                         method_download_flag = True
                 except Exception as e:
-                    if settings.INFO:
-                        self.error(f"Ошибка при загрузке изображения - {e}")
+                    self.error(f"Ошибка при загрузке изображения - {e}")
             
             if not method_download_flag:
                 try:
-                    self.info(f"Способ загрузки шаблона 3 - локальный файл")
-                    save_path = os.path.join(settings.LOCAL_LINK_TO_FILE)
+                    self.info(f"Способ загрузки шаблона 3 - локальный файл - os.path.join")
+                    pattern = r"/([^/]+\.png)$"
+                    match = re.search(pattern, self.IMAGE_LINK)
+                    save_path = os.path.join("images", match.group(1))
                     with open(save_path, 'rb') as f:
                         img_data = f.read()
                         img = Image.open(io.BytesIO(img_data))
@@ -596,13 +661,24 @@ class Tapper:
                     if not original_image:
                         return None
                 except Exception as e:
-                    if settings.INFO:
-                        self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
+                    self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
 
 
             while charges > 0:
-                await asyncio.sleep(delay=random.randint(4, 8))
-
+                await asyncio.sleep(delay=random.randint(1, 4))
+                try:
+                    if hasattr(settings, 'MISSPX_TO_NEXT_TEMPLATES'):
+                        MISSPX_TO_NEXT_TEMPLATES = settings.MISSPX_TO_NEXT_TEMPLATES-1
+                    else: 
+                        MISSPX_TO_NEXT_TEMPLATES = 5
+                    if self.missPx == MISSPX_TO_NEXT_TEMPLATES:
+                        self.nextline = True
+                        self.time_reset = True
+                        self.missPx = 0
+                        break
+                except Exception as e:
+                    self.error(f"Ошибка {e} - Отсутствует MISSPX_TO_NEXT_TEMPLATES.")
+                
                 # Основной шаблон 1000 х 1000
                 current_image_url = 'https://image.notpx.app/api/v2/image'
                 image_headers = deepcopy(headers)
@@ -613,7 +689,7 @@ class Tapper:
 
                 if current_image and original_image:
                     # Порівняння зображень і отримання змінених пікселів
-                    changes = await self.compare_images(current_image, original_image, x_offset, y_offset)
+                    changes = await self.compare_images(current_image, original_image, self.x_offset, self.y_offset)
                     change = random.choice(changes)
                     num_changes = len(changes)
                     self.info(f"Количество пикселей на шаблоне для перекраски - {num_changes} ...")
@@ -625,6 +701,7 @@ class Tapper:
                 
                     # Зменшуємо кількість доступної енергії
                     charges -= 1
+                    self.error_draw = False
             await self.save_or_update_session(balance_str)
         except Exception as e:
             error_message = f"Websocket error during painting: {str(e)}"
@@ -662,8 +739,6 @@ class Tapper:
                     changes.append((x + x_offset, y + y_offset, overlay_pixel_color))
         
         return changes
-
-
 
 
     async def upgrade(self, http_client: aiohttp.ClientSession):
@@ -722,29 +797,27 @@ class Tapper:
             data = await res.json()
 
             tasks = data['tasks'].keys()
-            try:
-                # 'nikolai', fetch-запит
-                if 'nikolai' in tasks:
-                    async with http_client.post(
-                        'https://plausible.joincommunity.xyz/api/event',
-                        headers={
-                            "accept": "*/*",
-                            "content-type": "text/plain",
-                        },
-                        json={
-                            "n": "task_nikolai",
-                            "u": "https://app.notpx.app/claiming",
-                            "d": "notpx.app",
-                            "r": None,
-                            "p": {"country": "PL"}
-                        },
-                        ssl=settings.ENABLE_SSL
-                    ) as response:
-                        response.raise_for_status()
-                        self.success("Executed task_nikolai event successfully.")
-            except Exception as error:
-                if settings.INFO:
-                    self.error(f"Unknown error during processing tasks nikolai: <light-yellow>{error}</light-yellow>")
+
+            # 'nikolai', fetch-запит
+            if 'nikolai' in tasks:
+                async with http_client.post(
+                    'https://plausible.joincommunity.xyz/api/event',
+                    headers={
+                        "accept": "*/*",
+                        "content-type": "text/plain",
+                    },
+                    json={
+                        "n": "task_nikolai",
+                        "u": "https://app.notpx.app/claiming",
+                        "d": "notpx.app",
+                        "r": None,
+                        "p": {"country": "PL"}
+                    },
+                    ssl=settings.ENABLE_SSL
+                ) as response:
+                    response.raise_for_status()
+                    self.success("Executed task_nikolai event successfully.")
+
 
             for task in settings.TASKS_TODO_LIST:
                 if self.user != None and task == 'premium' and not 'isPremium' in self.user:
@@ -914,6 +987,16 @@ class Tapper:
 
     async def run(self, proxy: str | None) -> None:
         while True:
+            Numlines = 0
+            if settings.TEMPLATES_FILE_MANUAL or self.nextline == True:
+                Numlines = await self.read_and_update_line('templates.txt')
+                if self.nextline == True and self.current_line < Numlines:
+                    if self.error_draw == True:
+                        self.current_line +=1
+                    else:
+                        self.current_line = await self.read_and_update_line('templates.txt', None, None, True)
+                self.info(f"Используемой шаблон с файла - {self.current_line+1}.")
+                await self.read_and_update_line('templates.txt', self.current_line)
             if settings.USE_RANDOM_DELAY_IN_RUN:
                 random_delay = random.randint(settings.RANDOM_DELAY_IN_RUN[0], settings.RANDOM_DELAY_IN_RUN[1])
                 self.info(f"Bot will start in <ly>{random_delay}s</ly>")
@@ -934,7 +1017,7 @@ class Tapper:
                 access_token_created_time = 0
                 token_live_time = random.randint(500, 900)
         
-                time_reset = False
+                self.time_reset = False
                 #self.success("while Start True")
                 try:
                     if time() - access_token_created_time >= token_live_time:
@@ -1004,7 +1087,7 @@ class Tapper:
                             if reward is not None:
                                 self.info(f"Claim reward: <light-green>{'{:,.3f}'.format(reward)}</light-green> 🔳")
                     else:
-                        time_reset = True
+                        self.time_reset = True
 
                     all_balance = await self.get_total_balance()
                     self.info(f"Баланс всех аккаунтов: <red>{'{:,.3f}'.format(all_balance)}</red>")
@@ -1012,7 +1095,7 @@ class Tapper:
                     sleep_time = random.randint(settings.SLEEP_TIME_IN_MINUTES[0], settings.SLEEP_TIME_IN_MINUTES[1])
 
                     is_night = False
-                    if not time_reset:
+                    if not self.time_reset:
                         if settings.DISABLE_IN_NIGHT:
                             is_night = self.is_night_time()
         
@@ -1030,10 +1113,14 @@ class Tapper:
                                 self.info(f"WebSocket closed successfully")
                             except Exception as error:
                                 self.error(f"Unknown error during closing socket: <light-yellow>{error}</light-yellow>")
-        
+                        
                         await asyncio.sleep(delay=sleep_time*60)
                     else:
-                        if hasattr(settings, 'FLOOD_WAIT_420_TIME'):
+                        self.time_reset = False
+                        if self.nextline == True:
+                            self.info(f"Перезапуск шаблона...")
+                            await asyncio.sleep(delay=3)
+                        elif hasattr(settings, 'FLOOD_WAIT_420_TIME'):
                             self.info(f"Waiting {settings.FLOOD_WAIT_420_TIME} seconds before retrying...")
                             await asyncio.sleep(delay=settings.FLOOD_WAIT_420_TIME)
                         else:
@@ -1042,7 +1129,7 @@ class Tapper:
                         continue
         
                 except Exception as error:
-                    self.error(f"Unknown error: <light-yellow>{error}</light-yellow>")
+                    self.error(f"Unknown error: <light-yellow>{error} ::: {traceback.format_exc()}</light-yellow>")
         
 
 async def run_tapper(tg_client: Client, proxy: str | None):

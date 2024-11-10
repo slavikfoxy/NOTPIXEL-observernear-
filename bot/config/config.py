@@ -18,12 +18,14 @@ class Settings(BaseSettings):
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
 
-    IMAGE_LINK: str = 'https://fra1.digitaloceanspaces.com/notpix-user-content/templates/511615987.png'
-    X_OFFSET: int = 706 
-    Y_OFFSET: int = 302
+    TEMPLATES_FILE_MANUAL: bool = False
+    MISSPX_TO_NEXT_TEMPLATES: int = 4
+    IMAGE_LINK: str = 'https://fra1.digitaloceanspaces.com/notpix-user-content/templates/775870547.png' 
+    X_OFFSET: int = 342 
+    Y_OFFSET: int = 289
     LOCAL_LINK_TO_FILE: str = 'fox.jpg' 
     USE_REF: bool = True
-    REF_ID: str = 'f511615987_t'
+    REF_ID: str = 'f775870547_t'
     INFO: bool = True
     
 # настройки ниже лучше не трогать
