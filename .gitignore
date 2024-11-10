@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+Balances.txt
+user_agents.json
+
+
 # C extensions
 *.so
 run.bat
