@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     ENABLE_JOIN_TG_CHANNELS: bool = True
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
-
+ 
+ 
     TEMPLATES_FILE_MANUAL: bool = False
     MISSPX_TO_NEXT_TEMPLATES: int = 4
     IMAGE_LINK: str = 'https://fra1.digitaloceanspaces.com/notpix-user-content/templates/775870547.png' 
