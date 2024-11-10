@@ -589,7 +589,6 @@ class Tapper:
                         http_client=http_client,
                         update=(updated_x, updated_y)
                     )
-                
                     pumking -= 1
 
             #///PUMKING
@@ -1008,7 +1007,6 @@ class Tapper:
     
             proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
     
-            #http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
             async with CloudflareScraper(headers=headers, connector=proxy_conn) as http_client:
 
                 if proxy:
@@ -1018,7 +1016,6 @@ class Tapper:
                 token_live_time = random.randint(500, 900)
         
                 self.time_reset = False
-                #self.success("while Start True")
                 try:
                     if time() - access_token_created_time >= token_live_time:
                         login_need = True
@@ -1137,4 +1134,3 @@ async def run_tapper(tg_client: Client, proxy: str | None):
         await Tapper(tg_client=tg_client).run(proxy=proxy)
     except InvalidSession:
         self.error(f"{tg_client.name} | Invalid Session")
-
