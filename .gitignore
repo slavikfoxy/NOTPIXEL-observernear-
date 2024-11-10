@@ -173,3 +173,4 @@ sessions*/
 user_agents.json
 
 *.json
+bot/config/used_sessions.txt
