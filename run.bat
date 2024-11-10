@@ -2,7 +2,7 @@
 
 if not exist venv (
     echo Creating virtual environment...
-    py -3.11 -m venv venv
+    python -m venv venv
 )
 
 
@@ -32,6 +32,7 @@ if not exist .git (
 git stash
 git pull
 git stash pop
+
 echo Starting the bot...
 python main.py 
 
