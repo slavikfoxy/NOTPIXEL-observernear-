@@ -474,7 +474,7 @@ class Tapper:
             self.error(f"ValueError, error convert difference_pix to float.")
         if difference_pix == 0:
             self.missPx +=1
-            await self.read_and_update_line('templates.txt', self.current_line, True)
+            #await self.read_and_update_line('templates.txt', self.current_line, True)
         else:
             self.missPx = 0
         self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with color <light-blue>{color}</light-blue> 🎨️ | Balance <light-green>{'{:,.3f}'.format(data.get('balance', 'unknown'))}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
@@ -561,6 +561,83 @@ class Tapper:
             self.error(f"ValueError, error convert difference_pix to float.")
         self.success(f"Painted (X: <cyan>{x}</cyan>, Y: <cyan>{y}</cyan>) with PUMKING 🎨️ | Balance <light-green>{balance:,.3f}</light-green> <red>(+ {round(difference_pix)} pix) </red>  🔳")
 
+
+    async def Download_template(self, http_client: aiohttp.ClientSession):
+        method_download_flag = False
+        if settings.FORCE_FILE:
+            try:
+                save_path = os.path.join(settings.LOCAL_LINK_TO_FILE)
+                with open(save_path, 'rb') as f:
+                    img_data = f.read()
+                    img = Image.open(io.BytesIO(img_data))
+                original_image = img
+                if not original_image:
+                    return None
+                return original_image
+            except Exception as e:
+                self.info(f"Ошибка загрузки локального файла (LOCAL_LINK_TO_FILE) - {settings.LOCAL_LINK_TO_FILE}| {e} | {traceback.format_exc()}")
+            
+        else:
+            try:
+                #self.info(f"Способ загрузки шаблона 1 - urllib.request")
+                with urllib.request.urlopen(self.IMAGE_LINK) as response:
+                    img_data = response.read()
+                    img = Image.open(io.BytesIO(img_data))
+                    try:
+                        if not os.path.exists("images"):
+                            os.makedirs("images")
+                        image_name = os.path.basename(self.IMAGE_LINK)
+                        img.save(os.path.join("images", image_name))
+                    except Exception as error:
+                        self.error(f"Error during image download and save: {error}")
+                original_image = img
+                method_download_flag = True
+                return original_image
+                if not original_image:
+                    return None
+            except urllib.error.HTTPError as e:
+                self.error(f"Ошибка {e.code} - {e.reason}.")
+            
+            if not method_download_flag:
+                try:
+                    #self.info(f"Способ загрузки шаблона 2 - get_image")
+                    original_image_url = self.IMAGE_LINK
+                    pattern = r'://([^/]+)/'
+                    match = re.search(pattern, original_image_url)
+                    image_headers = deepcopy(headers)
+                    image_headers['Host'] = match.group(1)
+                    original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
+                    try:
+                        if original_image:
+                            image_name = os.path.basename(self.IMAGE_LINK)
+                            if not os.path.exists("images"):
+                                os.makedirs("images")
+                            save_path = os.path.join("images", image_name)
+                            original_image.save(save_path)
+                    except Exception as error:
+                        self.error(f"Error during image download and save: {error}")
+                    if original_image:
+                        method_download_flag = True
+                        return original_image
+                except Exception as e:
+                    self.error(f"Ошибка при загрузке изображения - {e}")
+            
+            if not method_download_flag:
+                try:
+                    self.info(f"Способ загрузки шаблона 3 - локальный файл - os.path.join")
+                    pattern = r"/([^/]+\.png)$"
+                    match = re.search(pattern, self.IMAGE_LINK)
+                    save_path = os.path.join("images", match.group(1))
+                    with open(save_path, 'rb') as f:
+                        img_data = f.read()
+                        img = Image.open(io.BytesIO(img_data))
+                    original_image = img
+                    if not original_image:
+                        return None
+                    return original_image
+                except Exception as e:
+                    self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
+
     async def draw(self, http_client: aiohttp.ClientSession):
         try:
             self.error_draw = True
@@ -589,6 +666,7 @@ class Tapper:
                         http_client=http_client,
                         update=(updated_x, updated_y)
                     )
+                
                     pumking -= 1
 
             #///PUMKING
@@ -603,65 +681,8 @@ class Tapper:
                 self.info(f"REF_ID({settings.USE_REF}) - {self.REF_ID}, x:{self.x_offset} y:{self.y_offset}")
                 #self.info(f"ENABLE_DRAW_ART - {settings.ENABLE_DRAW_ART}, ENABLE_EXPERIMENTAL_X3_MODE - ({settings.ENABLE_EXPERIMENTAL_X3_MODE})")
             # Download Image
-            method_download_flag = False
-            try:
-                #self.info(f"Способ загрузки шаблона 1 - urllib.request")
-                with urllib.request.urlopen(self.IMAGE_LINK) as response:
-                    img_data = response.read()
-                    img = Image.open(io.BytesIO(img_data))
-                    try:
-                        if not os.path.exists("images"):
-                            os.makedirs("images")
-                        image_name = os.path.basename(self.IMAGE_LINK)
-                        img.save(os.path.join("images", image_name))
-                    except Exception as error:
-                        self.error(f"Error during image download and save: {error}")
-                original_image = img
-                method_download_flag = True
-                if not original_image:
-                    return None
-            
-            except urllib.error.HTTPError as e:
-                self.error(f"Ошибка {e.code} - {e.reason}.")
-            
-            if not method_download_flag:
-                try:
-                    #self.info(f"Способ загрузки шаблона 2 - get_image")
-                    original_image_url = self.IMAGE_LINK
-                    pattern = r'://([^/]+)/'
-                    match = re.search(pattern, original_image_url)
-                    image_headers = deepcopy(headers)
-                    image_headers['Host'] = match.group(1)
-                    original_image = await self.get_image(http_client, original_image_url, image_headers=image_headers)
-                    try:
-                        if original_image:
-                            image_name = os.path.basename(self.IMAGE_LINK)
-                            if not os.path.exists("images"):
-                                os.makedirs("images")
-                            save_path = os.path.join("images", image_name)
-                            original_image.save(save_path)
-                    except Exception as error:
-                        self.error(f"Error during image download and save: {error}")
-                    if original_image:
-                        method_download_flag = True
-                except Exception as e:
-                    self.error(f"Ошибка при загрузке изображения - {e}")
-            
-            if not method_download_flag:
-                try:
-                    self.info(f"Способ загрузки шаблона 3 - локальный файл - os.path.join")
-                    pattern = r"/([^/]+\.png)$"
-                    match = re.search(pattern, self.IMAGE_LINK)
-                    save_path = os.path.join("images", match.group(1))
-                    with open(save_path, 'rb') as f:
-                        img_data = f.read()
-                        img = Image.open(io.BytesIO(img_data))
-                    original_image = img
-                    if not original_image:
-                        return None
-                except Exception as e:
-                    self.error(f"Ошибка {e} - Отсутствует файл или указано неверное название файла.")
 
+            original_image = await self.Download_template(http_client=http_client)
 
             while charges > 0:
                 await asyncio.sleep(delay=random.randint(1, 4))
@@ -711,6 +732,50 @@ class Tapper:
             await asyncio.sleep(delay=3)
             await self.draw(http_client=http_client)
             
+
+    async def draw_random(self, http_client: aiohttp.ClientSession):
+        try:
+            response = await http_client.get('https://notpx.app/api/v1/mining/status', ssl=settings.ENABLE_SSL)
+            response.raise_for_status()
+            data = await response.json()
+            charges = data['charges'] 
+            balance_str = data.get('userBalance', 'unknown')
+            self.last_balance = float(balance_str)
+
+            if charges > 0:
+                self.info(f"Energy: <cyan>{charges}</cyan> ⚡️")
+            else:
+                self.info(f"No energy ⚡️")
+                return None
+            
+            if settings.INFO:
+                self.info(f"link - {self.IMAGE_LINK}")
+                self.info(f"REF_ID({settings.USE_REF}) - {self.REF_ID}, x:{self.x_offset} y:{self.y_offset}")
+
+            original_image = await self.Download_template(http_client=http_client)
+
+            while charges > 0:
+                await asyncio.sleep(delay=random.randint(1, 4))
+                width, height = original_image.size
+                x = random.randint(0, width - 5)
+                y = random.randint(0, height - 5)
+                image_pixel = original_image.getpixel((x, y))
+                image_hex_color = '#{:02x}{:02x}{:02x}'.format(*image_pixel).upper()
+                self.info(f"Рисуем наугад ))) ... x = {settings.X_OFFSET + width} || y = {settings.Y_OFFSET + height}|| {x + settings.X_OFFSET} | {y + settings.Y_OFFSET} | {image_hex_color}")
+                await self.send_draw_request(
+                    http_client=http_client,
+                    update=(x + settings.X_OFFSET, y + settings.Y_OFFSET, image_hex_color.upper())
+                )
+                charges -= 1
+            await self.save_or_update_session(balance_str)
+        except Exception as e:
+            error_message = f"Websocket error during painting: {str(e)}"
+            detailed_error = traceback.format_exc()  # Отримуємо повний текст помилки з трасуванням
+            self.error(f"{error_message}\nDetailed error:\n{detailed_error}")
+        except Exception as error:
+            self.warning(f"Unknown error during painting: <light-yellow>{error}</light-yellow>")
+            await asyncio.sleep(delay=3)
+            await self.draw_random(http_client=http_client)
 
 
     async def compare_images(self, base_image, overlay_image, x_offset, y_offset, threshold=30):
@@ -1007,6 +1072,7 @@ class Tapper:
     
             proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
     
+            #http_client = CloudflareScraper(headers=headers, connector=proxy_conn)
             async with CloudflareScraper(headers=headers, connector=proxy_conn) as http_client:
 
                 if proxy:
@@ -1016,6 +1082,7 @@ class Tapper:
                 token_live_time = random.randint(500, 900)
         
                 self.time_reset = False
+                #self.success("while Start True")
                 try:
                     if time() - access_token_created_time >= token_live_time:
                         login_need = True
@@ -1071,8 +1138,11 @@ class Tapper:
                         if settings.ENABLE_AUTO_TASKS:
                             await self.run_tasks(http_client=http_client)
 
-                        if settings.ENABLE_AUTO_DRAW:
+                        if settings.ENABLE_AUTO_DRAW or not settings.DRAW_RANDOM:
                             await self.draw(http_client=http_client)
+                            self.info(f"draw временно недоступен. Пишем в config DRAW_RANDOM: bool = True ")
+                        if settings.DRAW_RANDOM:
+                            await self.draw_random(http_client=http_client)
 
                         if settings.ENABLE_AUTO_UPGRADE:
                             status = await self.upgrade(http_client=http_client)

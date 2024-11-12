@@ -13,20 +13,21 @@ class Settings(BaseSettings):
     USE_PROXY_FROM_FILE: bool = False
 
     ENABLE_AUTO_TASKS: bool = True
-    ENABLE_AUTO_DRAW: bool = True
+    ENABLE_AUTO_DRAW: bool = False
     ENABLE_JOIN_TG_CHANNELS: bool = True
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
  
- 
+    DRAW_RANDOM: bool = True
     TEMPLATES_FILE_MANUAL: bool = False
     MISSPX_TO_NEXT_TEMPLATES: int = 4
-    IMAGE_LINK: str = 'https://fra1.digitaloceanspaces.com/notpix-user-content/templates/775870547.png' 
-    X_OFFSET: int = 342 
-    Y_OFFSET: int = 289
-    LOCAL_LINK_TO_FILE: str = 'fox.jpg' 
+    IMAGE_LINK: str = 'https://static.notpx.app/templates/555601693.png' 
+    X_OFFSET: int = 283 
+    Y_OFFSET: int = 66
+    FORCE_FILE: bool = True
+    LOCAL_LINK_TO_FILE: str = '555601693.png'  
     USE_REF: bool = True
-    REF_ID: str = 'f775870547_t'
+    REF_ID: str = 'f555601693_t'
     INFO: bool = True
     
 # настройки ниже лучше не трогать
