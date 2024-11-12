@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     USE_PROXY_FROM_FILE: bool = False
 
     ENABLE_AUTO_TASKS: bool = True
-    ENABLE_AUTO_DRAW: bool = False
+    ENABLE_AUTO_DRAW: bool = True
     ENABLE_JOIN_TG_CHANNELS: bool = True
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
