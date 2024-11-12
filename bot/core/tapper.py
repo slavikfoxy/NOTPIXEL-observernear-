@@ -1138,9 +1138,10 @@ class Tapper:
                         if settings.ENABLE_AUTO_TASKS:
                             await self.run_tasks(http_client=http_client)
 
-                        if settings.ENABLE_AUTO_DRAW or not settings.DRAW_RANDOM:
-                            await self.draw(http_client=http_client)
-                            self.info(f"draw временно недоступен. Пишем в config DRAW_RANDOM: bool = True ")
+                        if settings.ENABLE_AUTO_DRAW:
+                            #await self.draw(http_client=http_client)
+                            await self.draw_random(http_client=http_client)
+                            #self.info(f"draw временно недоступен. Пишем в config DRAW_RANDOM: bool = True ")
                         if settings.DRAW_RANDOM:
                             await self.draw_random(http_client=http_client)
 
