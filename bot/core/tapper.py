@@ -867,29 +867,6 @@ class Tapper:
 
             tasks = data['tasks'].keys()
             try:
-                # 'nikolai', fetch-запит
-                if not 'nikolai' in tasks:
-                    async with http_client.post(
-                        'https://plausible.joincommunity.xyz/api/event',
-                        headers={
-                            "accept": "*/*",
-                            "content-type": "text/plain",
-                        },
-                        json={
-                            "n": "task_nikolai",
-                            "u": "https://app.notpx.app/claiming",
-                            "d": "notpx.app",
-                            "r": "null"
-                        },
-                        ssl=settings.ENABLE_SSL
-                    ) as response:
-                        response.raise_for_status()
-                        self.success("Executed task_nikolai event successfully.")
-                await asyncio.sleep(delay=random.randint(2, 6))
-            except Exception as e:
-                self.error(f"Error complited task_nikolai. Code error - {e}")
-            
-            try:
                 # 'frogApp', fetch-запит
                 if not 'frogApp' in tasks:
 
