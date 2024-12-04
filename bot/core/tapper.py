@@ -861,28 +861,100 @@ class Tapper:
             data = await res.json()
 
             tasks = data['tasks'].keys()
+            try:
+                # 'nikolai', fetch-запит
+                if not 'nikolai' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_nikolai",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_nikolai event successfully.")
+                await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                self.error(f"Error complited task_nikolai. Code error - {e}")
+            
+            try:
+                # 'frogApp', fetch-запит
+                if not 'frogApp' in tasks:
 
-            # 'nikolai', fetch-запит
-            if 'nikolai' in tasks:
-                async with http_client.post(
-                    'https://plausible.joincommunity.xyz/api/event',
-                    headers={
-                        "accept": "*/*",
-                        "content-type": "text/plain",
-                    },
-                    json={
-                        "n": "task_nikolai",
-                        "u": "https://app.notpx.app/claiming",
-                        "d": "notpx.app",
-                        "r": None,
-                        "p": {"country": "PL"}
-                    },
-                    ssl=settings.ENABLE_SSL
-                ) as response:
-                    response.raise_for_status()
-                    self.success("Executed task_nikolai event successfully.")
-
-
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_frogApp",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed frogApp event successfully.")
+                    await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                self.error(f"Error complited task_frogApp. Code error - {e}")
+            
+            try:
+                # 'task_poker', fetch-запит
+                if not 'tonPoker' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_poker",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_poker event successfully.")
+                    await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                self.error(f"Error complited task_poker. Code error - {e}")
+           
+            try:
+                # 'task_flappy', fetch-запит
+                if not 'flappyBird' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_flappy",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_flappy event successfully.")
+                    await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                 self.error(f"Error complited task_flappy. Code error - {e}")
+            
+            await asyncio.sleep(delay=random.randint(1, 3))
             for task in settings.TASKS_TODO_LIST:
                 if self.user != None and task == 'premium' and not 'isPremium' in self.user:
                     continue
@@ -1140,9 +1212,7 @@ class Tapper:
 
                         if settings.ENABLE_AUTO_DRAW:
                             #await self.draw(http_client=http_client)
-                            await self.draw_random(http_client=http_client)
                             #self.info(f"draw временно недоступен. Пишем в config DRAW_RANDOM: bool = True ")
-                        if settings.DRAW_RANDOM:
                             await self.draw_random(http_client=http_client)
 
                         if settings.ENABLE_AUTO_UPGRADE:

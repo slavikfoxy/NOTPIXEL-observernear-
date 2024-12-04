@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     ENABLE_SSL: bool = False
 
     BOOSTS_BLACK_LIST: list[str] = ['invite3frens', 'INVITE_FRIENDS', 'TON_TRANSACTION', 'BOOST_CHANNEL', 'ACTIVITY_CHALLENGE', 'CONNECT_WALLET']
-    TASKS_TODO_LIST: list[str] = ["x:notcoin", "x:notpixel", "pumpkin", "nikolai", "paint20pixels", "leagueBonusSilver", "leagueBonusGold", "leagueBonusPlatinum", "boinkTask", "makePixelAvatar", "jettonTask", "channel:notpixel_channel", "channel:notcoin", "joinSquad"]
+    TASKS_TODO_LIST: list[str] = ["frogApp", "tonPoker", "flappyBird","x:notcoin", "x:notpixel", "pumpkin", "nikolai", "paint20pixels", "leagueBonusSilver", "leagueBonusGold", "leagueBonusPlatinum", "boinkTask", "makePixelAvatar", "jettonTask", "channel:notpixel_channel", "channel:notcoin", "joinSquad"]
 
 
 settings = Settings()
