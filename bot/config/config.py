@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     ENABLE_JOIN_TG_CHANNELS: bool = True
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
- 
+    ENABLE_WATCH_ADS: bool = True
+    
     DRAW_RANDOM: bool = True
     TEMPLATES_FILE_MANUAL: bool = False
     MISSPX_TO_NEXT_TEMPLATES: int = 4

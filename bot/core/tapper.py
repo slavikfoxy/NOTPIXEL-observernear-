@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from dateutil import parser
 from time import time
-from urllib.parse import unquote, quote
+from urllib.parse import unquote, quote, urlencode, urlparse
 import urllib.request  
 import re
 from copy import deepcopy
@@ -33,7 +33,7 @@ import aiohttp
 import json
 
 from .agents import generate_random_user_agent
-from .headers import headers, headers_notcoin
+from .headers import headers, headers_notcoin, headers_advertisement, headers_subscribe
 from .helper import format_duration
 
 from bot.config import settings
@@ -73,6 +73,9 @@ class Tapper:
         self.time_reset = False
         self.current_line = 0
         self.error_draw = False
+        self.chat_instance = None
+        self.user_info = None
+        self.status = None
 
         self.session_ug_dict = self.load_user_agents() or []
 
@@ -226,6 +229,8 @@ class Tapper:
 
             tg_web_data = unquote(
                 string=auth_url.split('tgWebAppData=', maxsplit=1)[1].split('&tgWebAppVersion', maxsplit=1)[0])
+
+            self.chat_instance = re.findall(r'chat_instance=([^&]+)', tg_web_data)[0]
 
             try:
                 if self.user_id == 0:
@@ -1121,6 +1126,54 @@ class Tapper:
             self.error(f"WebSocket connection error: {e}")
             return None
 
+
+    async def watch_ads(self, http_client):
+        _headers = deepcopy(headers_advertisement)
+        _headers['User-Agent'] = headers['User-Agent']
+        try:
+            params = {
+                "blockId": 4853,
+                "tg_id": self.user_info["id"],
+                "tg_platform": "android",
+                "platform": "Linux aarch64",
+                "language": self.tg_client.lang_code,
+                "chat_type": "sender",
+                "chat_instance": int(self.chat_instance),
+                "top_domain": "app.notpx.app",
+                "connectiontype": 1
+            }
+            #Trackings
+            while True:
+                base_url = "https://api.adsgram.ai/adv"
+                full_url = f"{base_url}?{urlencode(params)}"
+                adv_response = await http_client.get(full_url, headers=_headers)
+                adv_response.raise_for_status()
+                adv_data = await adv_response.json()
+                if adv_data:
+                    self.info(f"A new advertisement has been found for viewing! | Title: {adv_data['banner']['bannerAssets'][1]['value']} | Type: {adv_data['bannerType']}")
+                    previous_balance = await self.get_balance(http_client=http_client)
+                    render_url = adv_data['banner']['trackings'][0]['value']
+                    render_response = await http_client.get(render_url, headers=_headers)
+                    render_response.raise_for_status()
+                    await asyncio.sleep(random.randint(1, 5))
+                    show_url = adv_data['banner']['trackings'][1]['value']
+                    show_response = await http_client.get(show_url, headers=_headers)
+                    show_response.raise_for_status()
+                    await asyncio.sleep(random.randint(10, 15))
+                    reward_url = adv_data['banner']['trackings'][4]['value']
+                    reward_response = await http_client.get(reward_url, headers=_headers)
+                    reward_response.raise_for_status()
+                    await asyncio.sleep(random.randint(1, 5))
+                    current_balance = await self.get_balance(http_client=http_client)
+                    delta = round(current_balance - previous_balance, 1)
+                    self.success(f"Ad view completed successfully. | Reward: <e>{delta}</e>")
+                    await asyncio.sleep(random.randint(30, 35))
+                else:
+                    self.info(f"No ads are available for viewing at the moment.")
+                    break
+        except Exception as e:
+            logger.error(e)
+
     async def run(self, proxy: str | None) -> None:
         while True:
             Numlines = 0
@@ -1186,7 +1239,7 @@ class Tapper:
 
                 try:
                     user = await self.get_user_info(http_client=http_client, show_error_message=True)
-
+                    self.user_info = user
                     await asyncio.sleep(delay=2)
 
                     if user is not None:
@@ -1210,6 +1263,10 @@ class Tapper:
                         if settings.ENABLE_AUTO_TASKS:
                             await self.run_tasks(http_client=http_client)
 
+                        if settings.ENABLE_WATCH_ADS:
+                            await self.watch_ads(http_client=http_client)
+                            await asyncio.sleep(delay=random.randint(2, 5))
+
                         if settings.ENABLE_AUTO_DRAW:
                             #await self.draw(http_client=http_client)
                             #self.info(f"draw временно недоступен. Пишем в config DRAW_RANDOM: bool = True ")
@@ -1224,6 +1281,10 @@ class Tapper:
                             reward = await self.claim_mine(http_client=http_client)
                             if reward is not None:
                                 self.info(f"Claim reward: <light-green>{'{:,.3f}'.format(reward)}</light-green> 🔳")
+                                
+
+
+
                     else:
                         self.time_reset = True
 
