@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     ENABLE_CLAIM_REWARD: bool = True
     ENABLE_AUTO_UPGRADE: bool = True
     ENABLE_WATCH_ADS: bool = True
+    ENABLE_SECRET_WORDS: bool = True
+    SECRET_WORDS: list[str] = ["staking", "gram", "nft", "presale"]    
     
     DRAW_RANDOM: bool = True
     TEMPLATES_FILE_MANUAL: bool = False

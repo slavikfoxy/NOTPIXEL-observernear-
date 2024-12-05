@@ -11,6 +11,7 @@ import os
 import math
 import sys
 import traceback
+from yarl import URL
 
 from json import dump as dp, loads as ld
 from aiocfscrape import CloudflareScraper
@@ -1151,6 +1152,96 @@ class Tapper:
         except Exception as e:
             logger.error(e)
 
+    async def update_status(self, http_client: aiohttp.ClientSession):
+        base_delay = 2
+        max_retries = 5
+
+        for attempt in range(max_retries):
+            # Main loop for updating status
+            _headers = deepcopy(headers)
+            _headers['User-Agent'] = headers['User-Agent']
+            try:
+                url = 'https://notpx.app/api/v1/mining/status'
+                parsed_url = urlparse(url)
+                domain = URL(f"{parsed_url.scheme}://{parsed_url.netloc}")
+                cookie_jar = http_client.cookie_jar
+                cookies = cookie_jar.filter_cookies(domain)
+                if '__cf_bm' in cookies:
+                    cf_bm_value = cookies['__cf_bm'].value
+                    _headers.update({"Cookie": f"__cf_bm={cf_bm_value}"})
+                else:
+                    self.warning("__cf_bm cookie not found. Template loading might encounter issues.")
+                status_req = await http_client.get(url = url, headers=_headers)
+                status_req.raise_for_status()
+                status_json = await status_req.json()
+                self.status = status_json
+                return  # Exit on successful status update
+
+            except aiohttp.ClientResponseError as error:
+                retry_delay = base_delay * (attempt + 1)
+                self.warning(
+                    f"Status update attempt {attempt} failed| Sleep <y>{retry_delay}"
+                    f"</y> sec | {error.status}, {error.message}")
+                await asyncio.sleep(retry_delay)  # Wait before retrying
+                continue
+
+            except Exception as error:
+                retry_delay = base_delay * (attempt + 1)
+                self.error(
+                    f"Unexpected error when updating status| Sleep <y>{retry_delay}</y> "
+                    f"sec | {error}")
+                await asyncio.sleep(retry_delay * (attempt + 1))
+                continue
+
+        raise RuntimeError(f"{self.session_name} | Failed to update status after {max_retries} attempts")
+
+    async def use_secret_words(self, http_client: aiohttp.ClientSession):
+        base_delay = 2
+        max_retries = 5
+        secret_words = settings.SECRET_WORDS
+        quests = self.status["quests"]
+        await self.update_status(http_client)
+        if quests:
+            used_secret_words = [key.split("secretWord:")[1] for key in self.status["quests"]
+                               if key.startswith("secretWord:")]
+        else:
+            used_secret_words = []
+        unused_secret_words = [word for word in secret_words if word not in used_secret_words]
+        _headers = deepcopy(headers)
+        _headers['User-Agent'] = headers['User-Agent']
+        url = f"https://notpx.app/api/v1/mining/quest/check/secretWord"
+        parsed_url = urlparse(url)
+        domain = URL(f"{parsed_url.scheme}://{parsed_url.netloc}")
+        cookie_jar = http_client.cookie_jar
+        cookies = cookie_jar.filter_cookies(domain)
+        if '__cf_bm' in cookies:
+            cf_bm_value = cookies['__cf_bm'].value
+            _headers.update({"Cookie": f"__cf_bm={cf_bm_value}"})
+        for secret_word in unused_secret_words:
+            payload = {"secret_word": secret_word}
+            for attempt in range(max_retries):
+                try:
+                    secret_req = await http_client.post(url=url, headers=_headers, json=payload)
+                    secret_req.raise_for_status()
+                    self.info(f"Successfully used the secret word: '{secret_word}'")
+                    return True
+
+                except aiohttp.ClientResponseError as error:
+                    retry_delay = base_delay * (attempt + 1)
+                    self.warning(
+                        f"Secret word usage attempt {attempt} for '{secret_word}' failed | "
+                        f"Sleep <y>{retry_delay}</y> sec | {error.status}, {error.message}")
+                    await asyncio.sleep(retry_delay)
+
+                except Exception as error:
+                    retry_delay = base_delay * (attempt + 1)
+                    self.error(
+                        f"Unexpected error when using the secret word '{secret_word}' | "
+                        f"Sleep <y>{retry_delay}</y> sec | {error}")
+                    await asyncio.sleep(retry_delay)
+            self.error(
+                f"Unable to use the secret word '{secret_word}' after {max_retries} attempts")
+
     async def run(self, proxy: str | None) -> None:
         while True:
             Numlines = 0
@@ -1220,6 +1311,8 @@ class Tapper:
                     await asyncio.sleep(delay=2)
 
                     if user is not None:
+                        await self.update_status(http_client=http_client)
+                        await asyncio.sleep(delay=random.randint(2, 5))
                         #if settings.ENABLE_EXPERIMENTAL_X3_MODE:
                             #self.socket = await self.create_socket_connection(http_client=http_client)
 
@@ -1236,6 +1329,10 @@ class Tapper:
 
                         if settings.ENABLE_AUTO_JOIN_TO_SQUAD:
                             await self.join_squad(http_client=http_client, user=user)
+
+                        if settings.ENABLE_SECRET_WORDS:
+                            await self.use_secret_words(http_client=http_client)
+                            await asyncio.sleep(delay=random.randint(2, 5))
 
                         if settings.ENABLE_AUTO_TASKS:
                             await self.run_tasks(http_client=http_client)
