@@ -1169,12 +1169,14 @@ class Tapper:
                 "connectiontype": 1
             }
             #Trackings
+            adv_revised = 0
             while True:
                 base_url = "https://api.adsgram.ai/adv"
                 full_url = f"{base_url}?{urlencode(params)}"
                 adv_response = await http_client.get(full_url, headers=_headers)
                 adv_response.raise_for_status()
                 adv_data = await adv_response.json()
+                
                 if adv_data:
                     self.info(f"A new advertisement has been found for viewing! | Title: {adv_data['banner']['bannerAssets'][1]['value']} | Type: {adv_data['bannerType']}")
                     previous_balance = await self.get_balance(http_client=http_client)
@@ -1192,7 +1194,10 @@ class Tapper:
                     await asyncio.sleep(random.randint(1, 5))
                     current_balance = await self.get_balance(http_client=http_client)
                     delta = round(current_balance - previous_balance, 1)
-                    self.success(f"Ad view completed successfully. | Reward: <e>{delta}</e>")
+                    adv_revised += 1
+                    self.success(f"Ad view completed successfully. | Reward: <e>{delta}</e> | AD revised: <e>{adv_revised}</e>")
+                    if delta == 0:
+                        break
                     await asyncio.sleep(random.randint(30, 35))
                 else:
                     self.info(f"No ads are available for viewing at the moment.")
