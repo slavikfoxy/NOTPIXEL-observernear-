@@ -936,7 +936,55 @@ class Tapper:
                     await asyncio.sleep(delay=random.randint(2, 6))
             except Exception as e:
                  self.error(f"Error complited task_flappy. Code error - {e}")
+
+            try:
+                # 'tonDurakGame', fetch-запит
+                if not 'tonDurakGame' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_durak",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_flappy event successfully.")
+                    await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                 self.error(f"Error complited task_flappy. Code error - {e}")
             
+
+            try:
+                # 'solitaireGame', fetch-запит
+                if not 'solitaireGame' in tasks:
+                    async with http_client.post(
+                        'https://plausible.joincommunity.xyz/api/event',
+                        headers={
+                            "accept": "*/*",
+                            "content-type": "text/plain",
+                        },
+                        json={
+                            "n": "task_solitaire",
+                            "u": "https://app.notpx.app/claiming",
+                            "d": "notpx.app",
+                            "r": "null"
+                        },
+                        ssl=settings.ENABLE_SSL
+                    ) as response:
+                        response.raise_for_status()
+                        self.success("Executed task_flappy event successfully.")
+                    await asyncio.sleep(delay=random.randint(2, 6))
+            except Exception as e:
+                 self.error(f"Error complited task_flappy. Code error - {e}")
+
+
             await asyncio.sleep(delay=random.randint(1, 3))
             for task in settings.TASKS_TODO_LIST:
                 if self.user != None and task == 'premium' and not 'isPremium' in self.user:
